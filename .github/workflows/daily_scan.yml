@@ -1,1 +1,39 @@
+name: Daily Job Bot
+on:
+  schedule:
+    - cron: '0 9 * * *' # 9:00 AM UTC every day
+  workflow_dispatch: # Allows you to click "Run" manually
 
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  scan_and_post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          pip install crawl4ai google-generativeai
+          python -m playwright install chromium
+
+      - name: Run Scraper
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scraper.py
+
+      - name: Create Issue from Results
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Daily Job Digest - ${{ github.event.schedule || 'Manual Run' }}"
+          content-filepath: ./jobs_found.md
+          labels: |
+            automated-report
+            jobs
